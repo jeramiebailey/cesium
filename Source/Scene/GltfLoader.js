@@ -12,7 +12,7 @@ import Matrix4 from "../Core/Matrix4.js";
 import Quaternion from "../Core/Quaternion.js";
 import Sampler from "../Renderer/Sampler.js";
 import getAccessorByteStride from "../ThirdParty/GltfPipeline/getAccessorByteStride.js";
-import numberOfComponentsForType from "../ThirdParty/GltfPipeline/numberOfComponentsForType";
+import numberOfComponentsForType from "../ThirdParty/GltfPipeline/numberOfComponentsForType.js";
 import when from "../ThirdParty/when.js";
 import AttributeType from "./AttributeType.js";
 import GltfFeatureMetadataLoader from "./GltfFeatureMetadataLoader.js";
@@ -164,6 +164,9 @@ GltfLoader.prototype.load = function () {
       that._state = ResourceLoaderState.PROCESSING;
     })
     .otherwise(function (error) {
+      if (that.isDestroyed()) {
+        return;
+      }
       handleError(that, error);
     });
 };
@@ -205,9 +208,9 @@ GltfLoader.prototype.process = function (frameState) {
       etc1: frameState.context.etc1,
     });
     var gltf = gltfJsonLoader.gltf;
+    parse(this, gltf, supportedImageFormats, frameState);
     ResourceCache.unload(gltfJsonLoader);
     this._gltfJsonLoader = undefined;
-    parse(this, gltf, supportedImageFormats, frameState);
   }
 
   var loaders = this._loaders;
@@ -329,6 +332,9 @@ function loadSkin(loader, gltf, gltfSkin, nodes) {
     if (defined(bufferViewId)) {
       var bufferViewLoader = loadBufferView(loader, gltf, bufferViewId);
       bufferViewLoader.promise.then(function (bufferViewLoader) {
+        if (loader.isDestroyed()) {
+          return;
+        }
         var bufferViewTypedArray = bufferViewLoader.typedArray;
         var accessorTypedArray = getAccessorTypedArray(
           gltf,
@@ -423,6 +429,10 @@ function loadVertexAttribute(loader, gltf, accessorId, semantic, draco) {
     draco
   );
   vertexBufferLoader.promise.then(function (vertexBufferLoader) {
+    if (loader.isDestroyed()) {
+      return;
+    }
+
     attribute.buffer = vertexBufferLoader.vertexBuffer;
 
     if (
@@ -477,6 +487,9 @@ function loadInstancedAttribute(
       undefined
     );
     vertexBufferLoader.promise.then(function (vertexBufferLoader) {
+      if (loader.isDestroyed()) {
+        return;
+      }
       attribute.buffer = vertexBufferLoader.vertexBuffer;
     });
     return attribute;
@@ -484,6 +497,9 @@ function loadInstancedAttribute(
 
   var bufferViewLoader = loadBufferView(loader, gltf, bufferViewId);
   bufferViewLoader.promise.then(function (bufferViewLoader) {
+    if (loader.isDestroyed()) {
+      return;
+    }
     var bufferViewTypedArray = bufferViewLoader.typedArray;
     var accessorTypedArray = getAccessorTypedArray(
       gltf,
@@ -510,6 +526,9 @@ function loadIndices(loader, gltf, accessorId, draco) {
 
   var indexBufferLoader = loadIndexBuffer(loader, gltf, accessorId, draco);
   indexBufferLoader.promise.then(function (indexBufferLoader) {
+    if (loader.isDestroyed()) {
+      return;
+    }
     indices.buffer = indexBufferLoader.indexBuffer;
   });
 
@@ -537,6 +556,8 @@ function loadTexture(loader, gltf, textureInfo, supportedImageFormats) {
     asynchronous: loader._asynchronous,
   });
 
+  loader._loaders.push(textureLoader);
+
   var texture = new Texture();
   texture.texCoord = textureInfo.texCoord;
   texture.sampler = GltfLoaderUtil.createSampler({
@@ -545,6 +566,9 @@ function loadTexture(loader, gltf, textureInfo, supportedImageFormats) {
   });
 
   textureLoader.promise.then(function (textureLoader) {
+    if (loader.isDestroyed()) {
+      return;
+    }
     texture.texture = textureLoader.texture;
   });
 
@@ -966,6 +990,9 @@ function parse(loader, gltf, supportedImageFormats, frameState) {
       supportedImageFormats
     );
     featureMetadataLoader.then(function (featureMetadataLoader) {
+      if (loader.isDestroyed()) {
+        return;
+      }
       components.featureMetadata = featureMetadataLoader.featureMetadata;
     });
   }
@@ -978,10 +1005,16 @@ function parse(loader, gltf, supportedImageFormats, frameState) {
   when
     .all(promises)
     .then(function () {
+      if (loader.isDestroyed()) {
+        return;
+      }
       loader._state = ResourceLoaderState.READY;
       loader._promise.resolve(loader);
     })
     .otherwise(function (error) {
+      if (loader.isDestroyed()) {
+        return;
+      }
       handleError(loader, error);
     });
 }

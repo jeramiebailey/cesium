@@ -12,6 +12,13 @@
             "runtimeExecutable": "npm",
             "runtimeArgs": ["run-script", "start"],
             "noDebug": true
-        }
+        },
+        {
+            "name": "Tests",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:8080/Specs/SpecRunner.html?spec=Scene%2FGltfLoader",
+            "webRoot": "${workspaceFolder}"
+        },
     ]
 }
